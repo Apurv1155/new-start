@@ -10,47 +10,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # -------------------------------------------------
-      # 1. Check out source
-      - name: Checkout
+      # -----------------------------------
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # -------------------------------------------------
-      # 2. Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
 
-      # -------------------------------------------------
-      # 3. Install system + Python deps (now includes ANT)
-      - name: Install Buildozer tool‑chain
+      # -----------------------------------
+      - name: Install Buildozer toolchain
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt update
+          sudo apt install -y \
             build-essential git zip unzip openjdk-17-jdk ant \
             pkg-config libgl1-mesa-dev libgles2-mesa-dev \
             libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev
+            zlib1g-dev android-sdk
+
           python -m pip install --upgrade pip
           pip install "cython<3.0" buildozer
 
-      # 4. Make ANT visible to Buildozer
+      # -----------------------------------
+      - name: Pre-install Android build tools (AIDL fix)
+        run: |
+          yes | sdkmanager --sdk_root=$HOME/.buildozer/android/platform/android-sdk \
+            "platform-tools" \
+            "platforms;android-30" \
+            "build-tools;30.0.3"
+
       - name: Export ANT env
         run: |
           echo "ANT_HOME=/usr/share/ant" >> "$GITHUB_ENV"
           echo "/usr/share/ant/bin" >> "$GITHUB_PATH"
 
-      # -------------------------------------------------
-      # 5. Build APK
-      - name: Build APK with Buildozer
+      # -----------------------------------
+      - name: Build APK
         run: |
-          buildozer init || true          # creates spec if missing
-          buildozer -v android debug      # compile unsigned debug apk
+          buildozer init || true
+          buildozer -v android debug
 
-      # -------------------------------------------------
-      # 6. Upload artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
