@@ -1,7 +1,5 @@
 name: Android Kivy Build
 
-# • Runs on every push to main
-# • You can also trigger it manually (workflow_dispatch)
 on:
   push:
     branches: [ main ]
@@ -12,40 +10,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Check out repository
-      - name: Checkout code
+      # -------------------------------------------------
+      # 1. Check out source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 2) Set up Python (Buildozer needs Python ≥3.8)
+      # -------------------------------------------------
+      # 2. Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
 
-      # 3) Install system & Python dependencies
+      # -------------------------------------------------
+      # 3. Install system + Python deps (now includes ANT)
       - name: Install Buildozer tool‑chain
         run: |
           sudo apt-get update
-          # --- system packages Buildozer & Kivy need
           sudo apt-get install -y \
-            build-essential git zip unzip openjdk-17-jdk \
+            build-essential git zip unzip openjdk-17-jdk ant \
             pkg-config libgl1-mesa-dev libgles2-mesa-dev \
             libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
             zlib1g-dev
-          # --- Python packages
           python -m pip install --upgrade pip
           pip install "cython<3.0" buildozer
 
-      # 4) Initialise spec (if not present) & build debug APK
+      # 4. Make ANT visible to Buildozer
+      - name: Export ANT env
+        run: |
+          echo "ANT_HOME=/usr/share/ant" >> "$GITHUB_ENV"
+          echo "/usr/share/ant/bin" >> "$GITHUB_PATH"
+
+      # -------------------------------------------------
+      # 5. Build APK
       - name: Build APK with Buildozer
         run: |
-          # Initialise spec on first run (ignored if spec exists)
-          buildozer init || true
-          buildozer -v android debug
+          buildozer init || true          # creates spec if missing
+          buildozer -v android debug      # compile unsigned debug apk
 
-      # 5) Upload APK as GitHub artifact
-      - name: Upload APK artifact
+      # -------------------------------------------------
+      # 6. Upload artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: FaceApp-APK
