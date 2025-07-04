@@ -1,35 +1,51 @@
 name: Android Kivy Build
 
+# • Runs on every push to main
+# • You can also trigger it manually (workflow_dispatch)
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+      # 1) Check out repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2) Set up Python (Buildozer needs Python ≥3.8)
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
 
-      - name: Install dependencies
+      # 3) Install system & Python dependencies
+      - name: Install Buildozer tool‑chain
         run: |
-          sudo apt update
-          sudo apt install -y python3-pip build-essential git zip unzip openjdk-17-jdk             pkg-config libgl1-mesa-dev libgles2-mesa-dev libsdl2-dev libsdl2-image-dev             libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev             libavformat-dev libavcodec-dev zlib1g-dev
-          pip install buildozer
+          sudo apt-get update
+          # --- system packages Buildozer & Kivy need
+          sudo apt-get install -y \
+            build-essential git zip unzip openjdk-17-jdk \
+            pkg-config libgl1-mesa-dev libgles2-mesa-dev \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
+            zlib1g-dev
+          # --- Python packages
+          python -m pip install --upgrade pip
+          pip install "cython<3.0" buildozer
 
-      - name: Build APK
+      # 4) Initialise spec (if not present) & build debug APK
+      - name: Build APK with Buildozer
         run: |
+          # Initialise spec on first run (ignored if spec exists)
           buildozer init || true
-          buildozer android debug
+          buildozer -v android debug
 
-      - name: Upload APK
+      # 5) Upload APK as GitHub artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: FaceApp-APK
